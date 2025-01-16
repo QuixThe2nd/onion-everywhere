@@ -1,6 +1,7 @@
 'use strict';
 
 var browser = typeof browser !== "undefined" ? browser : chrome;
+var enableRedirect = true;
 
 function validate_onion_host(hostname) {
     if (!hostname.endsWith("onion")) {
@@ -24,6 +25,9 @@ function validate_onion_host(hostname) {
 }
 
 function tor_redirect(details) {
+    // If disabled, don't care to redirect
+    if (!enableRedirect) return;
+
     var onion_location_header = details.responseHeaders.find(function (header) {
         return header['name'].toLowerCase() == 'onion-location';
     });
@@ -81,4 +85,30 @@ browser.runtime.onMessage.addListener(function (message, sender, sendResponse) {
             browser.tabs.update(sender.tab.id, { url: redirect.redirectUrl });
         }
     }
+});
+
+// Make sure correct icon and title (toolbar button tooltip) is shown
+function updateIcon() {
+    browser.browserAction.setIcon({
+        path: enableRedirect ? {
+          19: "icons/icon-enabled-19.png",
+          38: "icons/icon-enabled-38.png"
+        } : {
+          19: "icons/icon-disabled-19.png",
+          38: "icons/icon-disabled-38.png"
+        }
+    });
+    browser.browserAction.setTitle({
+        // Screen readers can see the title
+        title: enableRedirect ? 'Onion Everywhere\n(Enabled - Click to toggle)' : 'Onion Everywhere\n(Disabled - Click to toggle)'
+    });
+}
+// Show proper icon and title on load
+updateIcon();
+
+// On toolbar button click
+browser.browserAction.onClicked.addListener(function (tab) {
+    // Toggle
+    enableRedirect = ! enableRedirect;
+    updateIcon();
 });
